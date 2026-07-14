@@ -6,12 +6,50 @@
  *     [--concurrency N] [--max-file-size MB] [--path-prefix /2007/]
  */
 import path from 'node:path'
+import { Agent, setGlobalDispatcher } from 'undici'
 import { CloneEngine } from '../lib/cloner/engine'
 import { DEFAULT_MAX_FILE_SIZE_BYTES, type CloneOptions } from '../lib/cloner/types'
 
 function arg(name: string, fallback?: string): string | undefined {
   const i = process.argv.indexOf(name)
   return i >= 0 ? process.argv[i + 1] : fallback
+}
+
+/**
+ * `--host-ip <ip>`: resolve every hostname to this address instead of using DNS.
+ *
+ * Needed to archive a site whose domain has lapsed or whose DNS already points
+ * elsewhere: the files are still on the origin server, which serves them by
+ * Host header, but there is no longer a DNS record pointing at it. Without this
+ * the content is simply unreachable — and once the host is cancelled, gone.
+ *
+ * TLS certificate checks are relaxed alongside it, because a server reached
+ * this way will present a certificate for some other name. That is expected
+ * here and safe: we are pinning the connection to an IP the operator gave us,
+ * not trusting an unknown network.
+ */
+const hostIp = arg('--host-ip')
+if (hostIp) {
+  setGlobalDispatcher(
+    new Agent({
+      connect: {
+        rejectUnauthorized: false,
+        // net.connect may request *all* addresses, which flips the callback
+        // shape from (address, family) to an array — handle both.
+        lookup: (
+          _hostname: string,
+          opts: { all?: boolean },
+          cb: (
+            err: Error | null,
+            address: string | Array<{ address: string; family: number }>,
+            family?: number,
+          ) => void,
+        ) =>
+          opts?.all ? cb(null, [{ address: hostIp, family: 4 }]) : cb(null, hostIp, 4),
+      },
+    }),
+  )
+  console.log(`[ ] Resolving all hostnames to ${hostIp} (DNS override; TLS verification relaxed)`)
 }
 
 const [url, outputDir] = process.argv.slice(2).filter((a) => !a.startsWith('--'))

@@ -107,10 +107,25 @@ export class CloneEngine {
    * check the written output and say so plainly.
    */
   private async auditSelfContained(): Promise<void> {
-    const ASSET_REF =
-      /(?:src\s*=\s*["']|url\(\s*["']?|<link[^>]*href\s*=\s*["'])(https?:\/\/[^"')\s>]+)/gi
+    // Only count references the browser actually *loads*. A WordPress page is
+    // full of <link rel="alternate" href="…/wp-json/…"> metadata pointing at
+    // the origin; counting those would report every WP mirror as broken and
+    // train the reader to ignore this warning.
+    const LOADED_REL = /^(stylesheet|icon|shortcut icon|apple-touch-icon|preload|manifest)$/i
+    const CSS_URL = /url\(\s*["']?(https?:\/\/[^"')\s]+)/gi
     const offenders = new Map<string, number>()
     let mixed = 0
+
+    const note = (raw: string) => {
+      let u: URL
+      try {
+        u = new URL(raw)
+      } catch {
+        return
+      }
+      offenders.set(u.hostname, (offenders.get(u.hostname) ?? 0) + 1)
+      if (u.protocol === 'http:') mixed++
+    }
 
     const walk = async (dir: string): Promise<string[]> => {
       const { readdir } = await import('node:fs/promises')
@@ -125,18 +140,35 @@ export class CloneEngine {
 
     try {
       const { readFile } = await import('node:fs/promises')
+      const cheerio = await import('cheerio')
+
       for (const file of await walk(this.options.outputDir)) {
         const text = await readFile(file, 'utf-8')
-        for (const m of text.matchAll(ASSET_REF)) {
-          let u: URL
-          try {
-            u = new URL(m[1])
-          } catch {
-            continue
-          }
-          offenders.set(u.hostname, (offenders.get(u.hostname) ?? 0) + 1)
-          if (u.protocol === 'http:') mixed++
+
+        if (/\.css$/i.test(file)) {
+          for (const m of text.matchAll(CSS_URL)) note(m[1])
+          continue
         }
+
+        const $ = cheerio.load(text)
+        $('img[src], script[src], video[src], audio[src], source[src], iframe[src], embed[src]').each(
+          (_, el) => {
+            const v = $(el).attr('src')
+            if (v) note(v)
+          },
+        )
+        $('link[href]').each((_, el) => {
+          const rel = ($(el).attr('rel') || '').trim()
+          if (!LOADED_REL.test(rel)) return
+          const v = $(el).attr('href')
+          if (v) note(v)
+        })
+        $('style').each((_, el) => {
+          for (const m of ($(el).html() ?? '').matchAll(CSS_URL)) note(m[1])
+        })
+        $('[style]').each((_, el) => {
+          for (const m of ($(el).attr('style') ?? '').matchAll(CSS_URL)) note(m[1])
+        })
       }
     } catch {
       return // audit is advisory; never fail a completed clone over it
