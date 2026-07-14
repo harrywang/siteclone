@@ -1,0 +1,84 @@
+appId: com.siteclone.app
+productName: SiteClone
+copyright: Copyright © 2026 Harry Wang
+
+directories:
+  output: dist-electron
+
+files:
+  - "electron/**/*"
+  - "package.json"
+  - "!node_modules"
+  - "node_modules/electron-updater/**/*"
+  - "node_modules/builder-util-runtime/**/*"
+  - "node_modules/fs-extra/**/*"
+  - "node_modules/graceful-fs/**/*"
+  - "node_modules/jsonfile/**/*"
+  - "node_modules/universalify/**/*"
+  - "node_modules/js-yaml/**/*"
+  - "node_modules/argparse/**/*"
+  - "node_modules/sprintf-js/**/*"
+  - "node_modules/lazy-val/**/*"
+  - "node_modules/lodash.escaperegexp/**/*"
+  - "node_modules/lodash.isequal/**/*"
+  - "node_modules/semver/**/*"
+  - "node_modules/tiny-typed-emitter/**/*"
+  - "node_modules/sumchecker/**/*"
+  - "node_modules/debug/**/*"
+  - "node_modules/ms/**/*"
+  - "!dist-electron"
+  - "!output"
+  - "!tests"
+  - "!app"
+  - "!lib"
+  - "!components"
+  - "!hooks"
+  - "!public"
+  - "!build"
+  - "!scripts"
+  - "!bin"
+
+publish:
+  provider: github
+  owner: harrywang
+  repo: siteclone
+  releaseType: release
+
+asarUnpack:
+  - "electron/server/**/*"
+
+mac:
+  category: public.app-category.developer-tools
+  icon: build/icon.png
+  hardenedRuntime: true
+  gatekeeperAssess: false
+  entitlements: electron/entitlements.mac.plist
+  entitlementsInherit: electron/entitlements.mac.plist
+  notarize: false
+  target:
+    - target: dmg
+      arch:
+        - x64
+        - arm64
+
+win:
+  icon: build/icon.png
+  target:
+    - target: nsis
+      arch:
+        - x64
+
+nsis:
+  oneClick: true
+  perMachine: false
+  allowToChangeInstallationDirectory: false
+
+dmg:
+  title: "SiteClone"
+  contents:
+    - x: 130
+      y: 220
+    - x: 410
+      y: 220
+      type: link
+      path: "/Applications"

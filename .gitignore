@@ -78,6 +78,20 @@ web_modules/
 .next
 out
 
+# Electron
+/dist-electron
+/electron/server
+
+# Build artifacts
+/build
+!/build/icon.png
+
+# Cloner output (default)
+/output
+
+# Local Claude config
+.claude/
+
 # Nuxt.js build / generate output
 .nuxt
 dist
