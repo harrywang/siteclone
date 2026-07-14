@@ -6,6 +6,7 @@
  *     [--concurrency N] [--max-file-size MB] [--path-prefix /2007/]
  */
 import path from 'node:path'
+import { readFileSync } from 'node:fs'
 import { Agent, setGlobalDispatcher } from 'undici'
 import { CloneEngine } from '../lib/cloner/engine'
 import { DEFAULT_MAX_FILE_SIZE_BYTES, type CloneOptions } from '../lib/cloner/types'
@@ -58,8 +59,18 @@ if (!url || !outputDir) {
   process.exit(1)
 }
 
+// `--seeds <file>`: newline-delimited extra URLs to crawl from.
+const seedsFile = arg('--seeds')
+const extraSeeds = seedsFile
+  ? readFileSync(seedsFile, 'utf-8')
+      .split('\n')
+      .map((l) => l.trim())
+      .filter((l) => l && !l.startsWith('#'))
+  : undefined
+
 const options: CloneOptions = {
   url,
+  extraSeeds,
   outputDir: path.resolve(outputDir),
   depth: parseInt(arg('--depth', '8')!, 10),
   concurrency: parseInt(arg('--concurrency', '6')!, 10),

@@ -77,6 +77,21 @@ export class CloneEngine {
 
     // Seed
     this.enqueue({ url: stripFragment(start), depth: 0, kind: 'page' })
+    for (const raw of this.options.extraSeeds ?? []) {
+      const u = normalizeUrl(raw)
+      if (!u || !isHttpProtocol(u)) {
+        this.log('warn', `Ignoring invalid seed: ${raw}`)
+        continue
+      }
+      if (!isSameSite(u, this.origin)) {
+        this.log('warn', `Ignoring off-site seed: ${raw}`)
+        continue
+      }
+      this.enqueue({ url: stripFragment(canonicalizeToSite(u, this.origin)), depth: 0, kind: 'page' })
+    }
+    if (this.options.extraSeeds?.length) {
+      this.log('info', `Seeded ${this.options.extraSeeds.length} additional URL(s)`)
+    }
 
     // Worker pool
     const workers: Promise<void>[] = []

@@ -2,6 +2,15 @@ export type CloneMode = 'static' | 'dynamic'
 
 export interface CloneOptions {
   url: string
+  /**
+   * Extra URLs to crawl from, alongside `url`.
+   *
+   * Needed when a site's front page can't be reached but its content can — a
+   * WordPress install whose home URL redirects to a domain that no longer
+   * serves it, for instance. Seeding only at `/` would archive nothing even
+   * though every post still resolves.
+   */
+  extraSeeds?: string[]
   outputDir: string
   depth: number
   concurrency: number
