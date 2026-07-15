@@ -1,0 +1,86 @@
+name: Release
+
+# Modeled on the same approach agentfit uses: Windows is built on a native
+# windows-latest runner (no Wine), Mac on macos-latest, and a release is
+# assembled from both. Pushing a version tag (v0.1.0, v0.2.0, …) builds and
+# publishes a fresh release. The manual trigger builds only the Windows
+# installer and attaches it to an existing release — used to add the .exe to a
+# release whose Mac DMGs were already built and signed locally.
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Existing release tag to attach a Windows build to
+        required: true
+        default: v0.1.0
+
+permissions:
+  contents: write
+
+jobs:
+  build-mac:
+    if: github.event_name == 'push'
+    runs-on: macos-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      # No signing certificate in CI, so build unsigned. For Developer-ID
+      # signing + notarization, add the cert/Apple secrets and an import step
+      # (see agentfit's release.yml).
+      - name: Build macOS DMGs (unsigned)
+        run: npm run electron:build:mac
+        env:
+          CSC_IDENTITY_AUTO_DISCOVERY: 'false'
+      - uses: actions/upload-artifact@v4
+        with:
+          name: mac
+          path: dist-electron/*.dmg
+
+  build-win:
+    runs-on: windows-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Build Windows installer
+        run: npm run electron:build:win
+      # Tag push: hand the .exe to the aggregate release job below.
+      - name: Upload .exe artifact
+        if: github.event_name == 'push'
+        uses: actions/upload-artifact@v4
+        with:
+          name: win
+          path: dist-electron/*.exe
+      # Manual run: attach the .exe straight to the existing release.
+      - name: Attach .exe to existing release
+        if: github.event_name == 'workflow_dispatch'
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release upload "${{ inputs.tag }}" dist-electron/*.exe --clobber
+
+  release:
+    if: github.event_name == 'push'
+    needs: [build-mac, build-win]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+      - uses: softprops/action-gh-release@v2
+        with:
+          files: artifacts/**/*
+          generate_release_notes: true
