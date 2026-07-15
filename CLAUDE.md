@@ -1,7 +1,7 @@
 # SiteClone
 
 Desktop app that mirrors any website into a self-contained static HTML/JS folder.
-Mac and Windows. Same packaging pattern as `agentfit`.
+Mac and Windows.
 
 ## Architecture
 

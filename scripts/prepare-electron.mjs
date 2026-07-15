@@ -4,8 +4,6 @@
  * Prepare the Next.js standalone build for Electron packaging.
  * Resolves symlinks and copies everything into a flat directory structure
  * that electron-builder can handle.
- *
- * Mirrors agentfit's prepare-electron.mjs.
  */
 
 import {
