@@ -83,7 +83,10 @@ out
 /electron/server
 
 # Build artifacts
-/build
+# Ignore build output but keep the app icon. Must exclude the *contents*
+# (/build/*), not the directory itself — git won't descend into an ignored
+# directory, so a whole-dir /build rule makes the !icon.png exception a no-op.
+/build/*
 !/build/icon.png
 
 # Cloner output (default)
