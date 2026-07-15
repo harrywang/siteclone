@@ -1,56 +1,79 @@
 # SiteClone
 
-Mirror any website into a self-contained static HTML/JS folder. Desktop app for
-Mac and Windows. Same packaging pattern as
-[AgentFit](https://github.com/harrywang/agentfit).
+Mirror any website into a self-contained static HTML/JS folder — a desktop app
+for Mac and Windows. Paste a URL, get a folder you can open in a browser or drop
+on any static host.
 
-## Why
+![SiteClone](docs/screenshot.png)
 
-- Take a static snapshot of a site for archive / migration / offline reading
-- Convert a small WordPress site to plain static HTML
-- Capture a JS-rendered page (SPA, dynamic theme) — Playwright handles those
-- Drop the result on any static host (S3, Netlify, GitHub Pages…)
+## Download
 
-End users get a simple `.dmg` (Mac) or `.exe` (Windows) — no npm, no command
-line. The app spawns a local Next.js server and a browser window.
+Grab the latest installer from
+**[Releases](https://github.com/harrywang/siteclone/releases)**:
 
-## Install
+- **Mac** — `SiteClone-<version>.dmg` (Intel + Apple Silicon)
+- **Windows** — `SiteClone-Setup-<version>.exe`
 
-**As a desktop app** — download the latest installer from
-[Releases](https://github.com/harrywang/siteclone/releases) (once published).
+No Node.js or command line needed. The app opens a window, you paste a URL, it
+writes the folder.
 
-**From source**:
+> The Mac build is unsigned. On first launch, right-click the app → **Open**, or
+> allow it under System Settings → Privacy & Security.
+
+## What it does
+
+- **Detects the site first** — reports the tech stack (WordPress, SPA, etc.) and
+  recommends Static or Dynamic before you clone.
+- **Static mode** — `fetch` + cheerio, fast, faithful for server-rendered sites.
+- **Dynamic mode** — renders with headless Chromium (Playwright) for JS-heavy /
+  SPA / TLS-fingerprint-blocked sites.
+- **Rewrites everything local** — HTML, CSS `url(...)`, `srcset`, and assets
+  referenced only from JavaScript, so the folder has no dependency on the
+  original host. Handles WordPress quirks (lazy images, Uncode themes).
+- **Output** goes to `~/Documents/SiteClone/<host>/` — open `index.html`
+  directly, or host on S3 / Netlify / GitHub Pages.
+
+## Run from source
 
 ```bash
 git clone https://github.com/harrywang/siteclone.git
 cd siteclone
-./setup.sh         # Mac / Linux
-# or
-setup.bat          # Windows
-npm run electron:dev
+npm install
+npm run electron:dev     # build + open as a desktop app
 ```
 
-For dynamic mode (JS-rendered sites), install Chromium once:
+Or run just the web UI during development:
+
+```bash
+npm run dev              # Next.js on http://localhost:3000
+```
+
+For Dynamic mode, install Chromium once (or point `PLAYWRIGHT_CHROMIUM_PATH` at
+an existing Chrome/Edge):
 
 ```bash
 npx playwright install chromium
 ```
 
-## Use
+### Command-line
 
-1. Paste a URL (e.g. `https://example.com`)
-2. Pick depth (`0` = single page, `2` = page + linked pages + their links)
-3. Choose Static (fast) or Dynamic (Chromium, for JS-heavy sites)
-4. Click **Start clone** — watch live progress
+No app needed — clone straight from the terminal:
 
-Output goes to `~/Documents/SiteClone/<host>/` by default. Open `index.html`
-directly, or upload the folder to any static host.
+```bash
+npx tsx scripts/clone-cli.ts https://example.com ~/Documents/SiteClone/example.com
+```
+
+Useful flags: `--depth N`, `--mode static|dynamic`, `--concurrency N`,
+`--max-file-size MB`, `--host-ip <ip>` (reach a site whose DNS is gone but whose
+server still answers), `--seeds <file>` (extra start URLs when the front page is
+unreachable).
 
 ## Build installers
 
 ```bash
-npm run electron:build:mac   # → dist-electron/SiteClone-<v>.dmg (Intel + Apple Silicon)
+npm run electron:build:mac   # → dist-electron/SiteClone-<v>.dmg
 npm run electron:build:win   # → dist-electron/SiteClone Setup <v>.exe
+npm run electron:build:all   # both
 ```
 
 ## License
